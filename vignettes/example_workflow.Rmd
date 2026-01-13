@@ -11,13 +11,20 @@ This vignette outlines a typical workflow using SlakeItEasy to quantify soil agg
 
 A brief note for users without prior R experience: SlakeItEasy is a set of tools (called *functions*) designed to make it easier to quantify the expansion of soils submerged in water. We make a few assumptions about how images were collected and the settings for image processing in the workflow illustrated here and in the default function arguments. To learn more about what each function does and the settings that can be changed, type `?functionname` in the console.
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  tidy.opts = list(width.cutoff = 60), tidy = TRUE
-)
-```
+##download EBimage first time
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("EBImage")
+
+##install slake it easy first time
+# install {remotes} if missing
+if (!require(remotes)) {
+install.packages('remotes')
+}
+# install latest version of {SlakeItEasy} from GitHub repository
+remotes::install_github('Soil-Health-Institute/SlakeItEasy')
+
 
 ## Load required packages
 
@@ -26,6 +33,16 @@ library(EBImage)
 library(dplyr)
 library(SlakeItEasy)
 ```
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  tidy.opts = list(width.cutoff = 60), tidy = TRUE
+)
+```
+
+
 
 ## Set paths to images and output directory
 
@@ -68,6 +85,11 @@ unusable_dir <- dirs_for_flagged_imgs['unusable']
 ## Inspect image metadata
 
 SlakeItEasy extracts image attributes from file names and from EXIF metadata (see `?exifr::read_exif`). As described [here](https://github.com/Soil-Health-Institute/SlakeItEasy/), sample IDs and replicate numbers should be represented by directory names, not image file names. Image file names should contain the date and time of image acquisition. (Note: default function arguments assume images were collected with the OpenCamera Android app.)
+
+##Canon EOS T3 metadata format: <xmp:CreateDate>2025-02-21T14:13:44</xmp:CreateDate>
+## also formatted as 2025-02-21 14:13:44.013 
+
+
 
 ```{r}
 metadata <- get_metadata(paths$image_dir, filename_prefix = 'IMG_')
