@@ -1,12 +1,38 @@
+## Fisher Lab SlakeItEasy workflow
+
+##Tasks for first time use
+##download EBimage first time
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("EBImage")
+
+##install slake it easy first time
+# install {remotes} if missing
+if (!require(remotes)) {
+  install.packages('remotes')
+}
+
+# install latest version of {SlakeItEasy} from GitHub repository
+remotes::install_github('Soil-Health-Institute/SlakeItEasy')
+
+##install exif image package 
+install.packages("exifr")
+
+
+## START HERE if you have everything installed
+## Load required packages
 library(EBImage)
 library(dplyr)
 library(SlakeItEasy)
+library(exifr)
 
 # NOTE: TYPE CONTROL + SHIFT + o (COMMAND + SHIFT + o) TO TOGGLE WORKFLOW OUTLINE
 
 # set paths to images and output directory --------------------------------
 ### run the following line to select the location of your images and output interactively. if you routinely process images in a consistent location, specify that location as the parent_dir_img argument to set_paths(), e.g.,
-# paths <- set_paths(parent_dir_img = '~/Library/CloudStorage/OneDrive-SharedLibraries-SoilHealthInstitute/Data Repository - Documents/Final Data File Store/AmAgLab Slakes/')
+# paths <- set_paths(parent_dir_img = '~/Library/YourLocations/SlakeData/')
+#YOU WILL HAVE ERRORS IF YOU DON'T SET AN OUTPUT DIRECTORY. For output, select a general directory where results for multiple batches can be saved.
 
 paths <- set_paths(parent_dir_img = system.file("images/", package="SlakeItEasy"), batch_name = 'demo')
 
@@ -26,6 +52,53 @@ unusable_dir <- dirs_for_flagged_imgs['unusable']
 # if you want to concatenate the output of a previous run, skip to the section "concatenate previous run"
 
 ####
+
+# SlakeItEasy extracts image attributes from file names, though the document says it uses EXIF metadata, it actually uses image file names. Fisher Lab had a different camera format than slakes developers, so we created this block of commands to rename files to fit the Slake It Easy file name format. These steps rename files from Canon EOS T3 by pulling the date and time from the image EXIF and renaming the file with the date and time.
+
+##Canon EOS T3 metadata format for Fisher Lab: <xmp:CreateDate>2025-02-21T14:13:44</xmp:CreateDate>
+## also formatted as 2025-02-21 14:13:44.013 
+
+# To rename images from EXIF data
+# image_dir was set above. 
+
+# Get the list of all .jpg files in the root directory and subdirectories and view them. 
+#this set of steps is not strictly necessary
+image_files <- list.files(image_dir, pattern = "\\.jpg$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
+image_files
+
+# Rename images in the defined directory from EXIF data 
+if (length(image_files) == 0) {
+  cat("No images found in the specified directory.\n")
+} else {
+  # Loop through each image file and rename based on CreateDate
+  for (image_path in image_files) {
+    
+    # Extract EXIF metadata
+    metadata <- read_exif(image_path, tags = "CreateDate")
+    
+    # Check if CreateDate exists
+    if (!is.na(metadata$CreateDate)) {
+      
+      # Format CreateDate into IMG_YYYYMMDD_HHMMSS.jpg
+      new_name <- format(as.POSIXct(metadata$CreateDate, format="%Y:%m:%d %H:%M:%S"), "IMG_%Y%m%d_%H%M%S.jpg")
+      
+      # Keep the file in the same directory
+      image_dir <- dirname(image_path)  # Get the current folder of the image
+      new_path <- file.path(image_dir, new_name)  # Define new full path
+      
+      # Rename the file if the new name doesn't already exist
+      if (!file.exists(new_path)) {
+        file.rename(image_path, new_path)
+        cat("Renamed:", image_path, "->", new_name, "\n")
+      } else {
+        cat("Skipped:", image_path, "(Target filename already exists)\n")
+      }
+    } else {
+      cat("No CreateDate found for:", image_path, "\n")
+    }
+  }
+}
+
 
 # extract metadata for images ---------------------------------------------
 metadata <- get_metadata(paths$image_dir, filename_prefix = 'IMG_', image_extension = '.jpg')
