@@ -1,5 +1,5 @@
 ---
-title: "First steps with SlakeItEasy"
+title: "Fisher Lab SlakeItEasy"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Example image processing workflow}
@@ -26,6 +26,7 @@ install.packages('remotes')
 remotes::install_github('Soil-Health-Institute/SlakeItEasy')
 
 
+## START HERE if you have everything installed
 ## Load required packages
 
 ```{r setup, message=FALSE}
@@ -33,6 +34,8 @@ library(EBImage)
 library(dplyr)
 library(SlakeItEasy)
 ```
+
+## this just sets formatting, so not necessary to run
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -48,7 +51,7 @@ knitr::opts_chunk$set(
 
 SlakeItEasy is designed to analyze batches of images. We need to tell R where on the computer the image batch is saved and where we want to save files related to image processing and our final aggregate stability data.
 
-The SlakeItEasy package provides the function `set_paths()` for users that prefer to use the file browser to specify locations of images and file output. For output, select a general directory where results for multiple batches can be saved.
+The SlakeItEasy package provides the function `set_paths()` for users that prefer to use the file browser to specify locations of images and file output. YOU WILL HAVE ERRORS IF YOU DON'T SET AN OUTPUT DIRECTORY. For output, select a general directory where results for multiple batches can be saved.
 
 ```{r, eval=FALSE}
 paths <- set_paths()
@@ -57,9 +60,9 @@ paths <- set_paths()
 Alternatively, you can specify `paths` non-interactively by defining a named list with the image directory, output directory, and batch name.
 
 ```{r, eval=F}
-paths <- list(image_dir = '/path/to/image/directory',
-              output_dir = '/path/to/output/directory',
-              batch_name = 'mybatch')
+paths <- list(image_dir = '~/Documents/r/Slake/CSC/Summer2022/S22W1005/S22W1005-RP2',
+              output_dir = dir.create('~/Documents/r/Slake/CSC/Summer2022/S22W1005/S22W1005-RP2/output'),
+              batch_name = 'bafbatch')
 ```
 
 ```{r, include=FALSE}
@@ -84,12 +87,53 @@ unusable_dir <- dirs_for_flagged_imgs['unusable']
 
 ## Inspect image metadata
 
-SlakeItEasy extracts image attributes from file names and from EXIF metadata (see `?exifr::read_exif`). As described [here](https://github.com/Soil-Health-Institute/SlakeItEasy/), sample IDs and replicate numbers should be represented by directory names, not image file names. Image file names should contain the date and time of image acquisition. (Note: default function arguments assume images were collected with the OpenCamera Android app.)
+SlakeItEasy extracts image attributes from file names, though the document says it uses EXIF metadata, it actually uses \image file names. Fisher Lab had a different camera format than slakes developers, so we created this block of commands to rename files to fit the Slake It Easy file name format. These steps rename files from Canon EOS T3 by pulling the date and time from the image EXIF and renaming the file with the date and time. 
 
-##Canon EOS T3 metadata format: <xmp:CreateDate>2025-02-21T14:13:44</xmp:CreateDate>
+##Canon EOS T3 metadata format for Fisher Lab: <xmp:CreateDate>2025-02-21T14:13:44</xmp:CreateDate>
 ## also formatted as 2025-02-21 14:13:44.013 
 
+# To rename images from EXIF data, Load required packages
+install.packages("exifr")  # If not already installed
+library(exifr)
 
+# image_dir was set above. 
+# Get the list of all .jpg files in the root directory and subdirectories and view them. 
+#this set of steps is not strictly necessary
+image_files <- list.files(image_dir, pattern = "\\.jpg$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
+image_files
+
+# Rename images in the defined directory from EXIF data 
+if (length(image_files) == 0) {
+  cat("No images found in the specified directory.\n")
+} else {
+  # Loop through each image file and rename based on CreateDate
+  for (image_path in image_files) {
+
+    # Extract EXIF metadata
+    metadata <- read_exif(image_path, tags = "CreateDate")
+
+    # Check if CreateDate exists
+    if (!is.na(metadata$CreateDate)) {
+
+      # Format CreateDate into IMG_YYYYMMDD_HHMMSS.jpg
+      new_name <- format(as.POSIXct(metadata$CreateDate, format="%Y:%m:%d %H:%M:%S"), "IMG_%Y%m%d_%H%M%S.jpg")
+
+      # Keep the file in the same directory
+      image_dir <- dirname(image_path)  # Get the current folder of the image
+      new_path <- file.path(image_dir, new_name)  # Define new full path
+
+      # Rename the file if the new name doesn't already exist
+      if (!file.exists(new_path)) {
+        file.rename(image_path, new_path)
+        cat("Renamed:", image_path, "->", new_name, "\n")
+      } else {
+        cat("Skipped:", image_path, "(Target filename already exists)\n")
+      }
+    } else {
+      cat("No CreateDate found for:", image_path, "\n")
+    }
+  }
+}
 
 ```{r}
 metadata <- get_metadata(paths$image_dir, filename_prefix = 'IMG_')
@@ -125,7 +169,7 @@ img <- read_to_portrait(with(metadata[1,], paste0(Directory, '/', FileName)))
 img_masked <- mask_image_circular(img, interactive = T, h_offset = 0)
 plot(img_masked)
 
-test <- area_from_image(with(metadata[1,], paste0(Directory, '/', FileName)), circular_mask = T, d = 0.73, interactive = T)
+test <- area_from_image(with(metadata[1,], paste0(Directory, '/', FileName)), circular_mask = T, d = 0.9, interactive = T)
 ```
 
 ## Automated batch processing with a circular crop
