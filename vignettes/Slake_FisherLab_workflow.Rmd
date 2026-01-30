@@ -1,16 +1,6 @@
----
-title: "Fisher Lab SlakeItEasy"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Example image processing workflow}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
+## Fisher Lab SlakeItEasy example
 
-This vignette outlines a typical workflow using SlakeItEasy to quantify soil aggregate stability from images. See the package [GitHub repository](https://github.com/Soil-Health-Institute/SlakeItEasy/) for instructions on package installation and required file structure and naming conventions. If you want to analyze soils in the field and only need to process one soil sample at a time, check out the Slakes app for Android or iPhone.
-
-A brief note for users without prior R experience: SlakeItEasy is a set of tools (called *functions*) designed to make it easier to quantify the expansion of soils submerged in water. We make a few assumptions about how images were collected and the settings for image processing in the workflow illustrated here and in the default function arguments. To learn more about what each function does and the settings that can be changed, type `?functionname` in the console.
-
+##Tasks for first time use
 ##download EBimage first time
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
@@ -22,60 +12,42 @@ BiocManager::install("EBImage")
 if (!require(remotes)) {
 install.packages('remotes')
 }
+
 # install latest version of {SlakeItEasy} from GitHub repository
 remotes::install_github('Soil-Health-Institute/SlakeItEasy')
+
+##install exif image package 
+install.packages("exifr")
 
 
 ## START HERE if you have everything installed
 ## Load required packages
-
-```{r setup, message=FALSE}
 library(EBImage)
 library(dplyr)
 library(SlakeItEasy)
-```
-
-## this just sets formatting, so not necessary to run
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  tidy.opts = list(width.cutoff = 60), tidy = TRUE
-)
-```
-
+library(exifr)
 
 
 ## Set paths to images and output directory
 
-SlakeItEasy is designed to analyze batches of images. We need to tell R where on the computer the image batch is saved and where we want to save files related to image processing and our final aggregate stability data.
+<!-- SlakeItEasy is designed to analyze batches of images. We need to tell R where on the computer the image batch is saved and where we want to save files related to image processing and our final aggregate stability data. -->
 
-The SlakeItEasy package provides the function `set_paths()` for users that prefer to use the file browser to specify locations of images and file output. YOU WILL HAVE ERRORS IF YOU DON'T SET AN OUTPUT DIRECTORY. For output, select a general directory where results for multiple batches can be saved.
+<!-- The SlakeItEasy package provides the function `set_paths()` for users that prefer to use the file browser to specify locations of images and file output. YOU WILL HAVE ERRORS IF YOU DON'T SET AN OUTPUT DIRECTORY. For output, select a general directory where results for multiple batches can be saved. -->
 
-```{r, eval=FALSE}
 paths <- set_paths()
-```
 
-Alternatively, you can specify `paths` non-interactively by defining a named list with the image directory, output directory, and batch name.
+##Alternatively, you can specify `paths` non-interactively by defining a named list with the image directory, output directory, and batch name.
 
-```{r, eval=F}
 paths <- list(image_dir = '~/Documents/r/Slake/CSC/Summer2022/S22W1005/S22W1005-RP2',
               output_dir = dir.create('~/Documents/r/Slake/CSC/Summer2022/S22W1005/S22W1005-RP2/output'),
               batch_name = 'bafbatch')
-```
 
-```{r, include=FALSE}
 paths <- list(image_dir = system.file("images/", package="SlakeItEasy"),
               output_dir = tempdir(),
               batch_name = paste0('batch_', format(Sys.Date(), '%Y%m%d')))
-```
 
 ## Set up directories for output
-
-Create a batch-specific directory for processing outputs. By default, `dir_setup` will also create subdirectories that we will use later to sort images.
-
-```{r}
+## Create a batch-specific directory for processing outputs. By default, `dir_setup` will also create subdirectories that we will use later to sort images.
 
 dirs_for_flagged_imgs <- dir_setup(paths$output_dir,  return_paths = T)
 
@@ -83,22 +55,18 @@ dirs_for_flagged_imgs <- dir_setup(paths$output_dir,  return_paths = T)
 
 reprocess_dir <- dirs_for_flagged_imgs['to_reprocess']
 unusable_dir <- dirs_for_flagged_imgs['unusable']
-```
 
 ## Inspect image metadata
 
-SlakeItEasy extracts image attributes from file names, though the document says it uses EXIF metadata, it actually uses \image file names. Fisher Lab had a different camera format than slakes developers, so we created this block of commands to rename files to fit the Slake It Easy file name format. These steps rename files from Canon EOS T3 by pulling the date and time from the image EXIF and renaming the file with the date and time. 
+<!-- SlakeItEasy extracts image attributes from file names, though the document says it uses EXIF metadata, it actually uses \image file names. Fisher Lab had a different camera format than slakes developers, so we created this block of commands to rename files to fit the Slake It Easy file name format. These steps rename files from Canon EOS T3 by pulling the date and time from the image EXIF and renaming the file with the date and time.  -->
 
 ##Canon EOS T3 metadata format for Fisher Lab: <xmp:CreateDate>2025-02-21T14:13:44</xmp:CreateDate>
 ## also formatted as 2025-02-21 14:13:44.013 
-
-# To rename images from EXIF data, Load required packages
-install.packages("exifr")  # If not already installed
-library(exifr)
-
+# To rename images from EXIF data
 # image_dir was set above. 
 # Get the list of all .jpg files in the root directory and subdirectories and view them. 
 #this set of steps is not strictly necessary
+
 image_files <- list.files(image_dir, pattern = "\\.jpg$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
 image_files
 
@@ -135,13 +103,11 @@ if (length(image_files) == 0) {
   }
 }
 
-```{r}
+
 metadata <- get_metadata(paths$image_dir, filename_prefix = 'IMG_')
-```
 
-Images in the directory specified by `paths$image_dir` are assumed to be arranged by replicate: that is, an individual set of aggregates that were photographed in the air-dry state, immediately after submersion, and after a specified time in water  (by default, ten minutes ±30 seconds). Use `check_replicates` to identify image sets that deviate from these expectations.
+<!-- Images in the directory specified by `paths$image_dir` are assumed to be arranged by replicate: that is, an individual set of aggregates that were photographed in the air-dry state, immediately after submersion, and after a specified time in water  (by default, ten minutes ±30 seconds). Use `check_replicates` to identify image sets that deviate from these expectations. -->
 
-```{r}
 metadata_qaqc <- check_replicates(metadata,  final_img_time_min = 10, final_img_tol_sec = 30, n_images_max = 3)
 
 # save metadata summary to output directory
@@ -158,38 +124,28 @@ metadata_qaqc$wrong_final_time
 if (length(metadata_qaqc$extra_imgs) > 0) {
   opendirs(metadata_qaqc$extra_imgs)
 }
-```
+
 
 ## Process individual images
+<!-- The suitability of default function arguments and need for alternative values can be evaluated by running `mask_image_circular()` and/or `area_from_image()`. If the sample container (Petri dish) is off-center in the image, modify the mask offsets (`h_offset` and `v_offset`). If the mask needs to be resized, modify the relative diameter of the mask (`d`). -->
 
-The suitability of default function arguments and need for alternative values can be evaluated by running `mask_image_circular()` and/or `area_from_image()`. If the sample container (Petri dish) is off-center in the image, modify the mask offsets (`h_offset` and `v_offset`). If the mask needs to be resized, modify the relative diameter of the mask (`d`).
-
-```{r, eval = F}
 img <- read_to_portrait(with(metadata[1,], paste0(Directory, '/', FileName)))
 img_masked <- mask_image_circular(img, interactive = T, h_offset = 0)
 plot(img_masked)
 
 test <- area_from_image(with(metadata[1,], paste0(Directory, '/', FileName)), circular_mask = T, d = 0.9, interactive = T)
-```
 
 ## Automated batch processing with a circular crop
-
-```{r, eval = F}
 results <- batch_process(dir_vec = to_analyze, outdir = paths$output_dir, filename_prefix = 'IMG_', match_resolution = T, circular_mask = T, parallel = T)
-```
 
 ## Inspect classifications and sort suboptimal images
 
-```{r, eval = F}
 reprocess_dir <- dirs_for_flagged_imgs['to_reprocess']
 unusable_dir <- dirs_for_flagged_imgs['unusable']
 opendirs(c(unusable_dir, reprocess_dir, paste0(paths$output_dir, '/images_false_color')))
-```
 
 ## Prepare for manual processing
 
-```{r, eval = F}
 images_to_reprocess <- list.files(reprocess_dir)
 
 dir_vec2 <- unique(sapply(strsplit(images_to_reprocess, '_x_'), function(x) paste(x[1:(length(x) - 1)], collapse = '/')))
-```
